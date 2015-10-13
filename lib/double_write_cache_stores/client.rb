@@ -109,6 +109,14 @@ class DoubleWriteCacheStores::Client
     end
   end
 
+  def incr(key, value=1, options=nil)
+    increment_cache_store key, value, options
+  end
+
+  def increment(key, value=1, options=nil)
+    increment_cache_store key, value, options
+  end
+
   private
 
   def write_cache_store(key, value, options = nil)
@@ -144,6 +152,24 @@ class DoubleWriteCacheStores::Client
       @read_and_write_store.read_multi *keys
     else
       raise UnSupportException.new "Unsupported multi keys get or read from client object."
+    end
+  end
+
+  def increment_cache_store(key, value=1, options=nil)
+    incr_or_increment_method_call @read_and_write_store, key, value, options
+    incr_or_increment_method_call @write_only_store, key, value, options
+  end
+
+  def incr_or_increment_method_call(cache_store, key, value, options)
+    if cache_store.respond_to? :incr
+      if defined?(Dalli) && cache_store.is_a?(Dalli::Client)
+        ttl = options[:expires_in] if options
+        cache_store.incr key, value, ttl, options
+      else
+        cache_store.incr key, value, options
+      end
+    elsif cache_store.respond_to? :increment
+      cache_store.increment key, value, options
     end
   end
 
