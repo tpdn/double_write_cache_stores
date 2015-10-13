@@ -33,6 +33,49 @@ describe DoubleWriteCacheStores::Client do
     end
   end
 
+  describe '#increment_cache_store'do
+    let(:key) {'key-increment'}
+    before { cache_store.delete key }
+
+    context 'when cache_store has single cache' do
+      let(:cache_store) { one_cache_store }
+      context 'when value does not exist' do
+        it 'set value' do
+          cache_store.increment key, 1, :expires_in => 1.day
+          expect(read_and_write_store.read key).to eq '1'
+        end
+      end
+      context 'when numeric value exists' do
+        before do
+          cache_store.set key, 1, :expires_in => 1.day, :raw => true
+        end
+        it 'increase value' do
+          cache_store.increment key, 1, :expires_in => 1.day
+          expect(read_and_write_store.read key).to eq '2'
+        end
+      end
+    end
+
+    context 'when cache_store has double cache' do
+      let(:cache_store) { copy_cache_store }
+      context 'when value does not exist' do
+        it 'set value' do
+          cache_store.increment key, 1, :expires_in => 1.day
+          expect(read_and_write_store.read key).to eq '1'
+          expect(write_only_store.read key).to eq '1'
+        end
+      end
+      context 'when numeric value exists' do
+        before { cache_store.set key, 1, :expires_in => 1.day, :raw => true }
+        it 'increase value' do
+          cache_store.increment key, 1, :expires_in => 1.day
+          expect(read_and_write_store.read key).to eq '2'
+          expect(write_only_store.read key).to eq '2'
+        end
+      end
+    end
+  end
+
   shared_examples "cache store example" do |cache_store|
     describe '#read_multi' do
       before do
